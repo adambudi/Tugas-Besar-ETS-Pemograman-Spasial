@@ -41,7 +41,7 @@ Dashboard berjalan lewat R, bukan langsung di GitHub. Lihat bagian *Cara Menjala
 ## Metode
 
 1. Batas kecamatan RBI 25K difilter untuk Kabupaten Wonogiri dan diubah ke UTM zona 49S (EPSG:32749).
-2. Band Sentinel-2 L2A (B03, B04, B05, B08, B11) dipotong, digabung (mosaic) dari tiga tile, dan di-mask ke batas kabupaten.
+2. Band Sentinel-2 L2A (B03, B04, B05, B08, B11) dipotong, digabung (mosaic) dari tile yang menutupi wilayah, dan di-mask ke batas kabupaten.
 3. Nilai piksel dikonversi ke reflektansi: `(DN - 1000) / 10000`.
 4. Empat indeks spektral dihitung:
 
@@ -62,7 +62,7 @@ Dashboard berjalan lewat R, bukan langsung di GitHub. Lihat bagian *Cara Menjala
 | Awan | NDCI ≤ 0,03 dan reflektansi merah ≥ 0,20 (diterapkan terakhir) |
 
 6. Statistik indeks (mean, min, max, median, standar deviasi) dan luas tiap kelas dihitung per kecamatan.
-7. Peta akhir disusun dalam layout QGIS (judul, legenda, skala, panah utara, dan sumber data).
+7. Peta akhir disusun dalam layout QGIS (judul, legenda, skala, panah utara, grid koordinat, dan sumber data).
 
 **Keterbatasan:** klasifikasi berbasis ambang batas sederhana, sehingga lahan terbuka tanpa vegetasi dapat terklasifikasi sebagai bangunan.
 
@@ -85,11 +85,11 @@ Dashboard berjalan lewat R, bukan langsung di GitHub. Lihat bagian *Cara Menjala
     └── web/                      # raster per kelas untuk dashboard
 ```
 
-## Data
+## Sumber Data
 
-- Batas administrasi: RBI skala 1:25.000, Ina-Geoportal, Badan Informasi Geospasial (BIG).
-- Citra satelit: Sentinel-2 L2A (14 Oktober 2026), tile T49MDM, T49MEM, dan T49LDL, Copernicus (ESA).
-- Basemap pada layout QGIS: HCMGIS (Google Satellite).
+- Citra satelit: Sentinel-2 L2A, akuisisi 14 Oktober 2026. Contains modified Copernicus Sentinel data (2026), Copernicus Data Space Ecosystem.
+- Batas administrasi: Peta RBI skala 1:25.000 (2022), Badan Informasi Geospasial (BIG), melalui Ina-Geoportal.
+- Peta dasar pada layout QGIS: Google Satellite © Google, diakses melalui plugin HCMGIS.
 
 Citra mentah, geodatabase, dan raster beresolusi 10 m tidak disertakan karena ukurannya melebihi batas GitHub.
 
@@ -106,6 +106,6 @@ Data yang dibaca dashboard sudah tersedia di folder `output/`, sehingga analisis
 
 ## Anggota Kelompok
 
-- Adam Budi Kusumo
-- Alif Putra Dewangga
+- Adam Budi Kusumo    (5016241135)
+- Alif Putra Dewangga (5016241121)
 - (tambahkan anggota lain jika ada)
