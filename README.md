@@ -10,25 +10,14 @@ Proyek ini mengklasifikasikan tutupan lahan Kabupaten Wonogiri menjadi empat kel
 
 ## Dashboard Interaktif (Shiny dan Leaflet)
 
-Dashboard memiliki empat menu. Layer batas kabupaten, batas kecamatan, nama kecamatan, dan keempat kelas tutupan lahan dapat dinyalakan atau dimatikan, dengan pilihan basemap OpenStreetMap dan Citra Satelit.
+Dashboard memiliki empat menu:
 
-**1. Tutupan Lahan**
+1. **Tutupan Lahan**: peta interaktif dengan layer batas kabupaten, batas kecamatan, nama kecamatan, serta kelas vegetasi, bangunan, perairan, dan awan yang dapat dinyalakan atau dimatikan. Basemap dapat dipilih (OpenStreetMap atau Citra Satelit).
+2. **Zonal Indeks per Kecamatan**: peta rata-rata NDVI, NDBI, NDWI, dan NDCI per kecamatan.
+3. **Statistik per Kecamatan**: tabel zonal statistics, histogram, dan grafik rata-rata indeks.
+4. **Luas Kelas per Kecamatan**: tabel luas dan grafik komposisi tutupan lahan.
 
-![Menu Tutupan Lahan](docs/dashboard_tutupan_lahan.png)
-
-**2. Zonal Indeks per Kecamatan**
-
-![Menu Zonal Indeks](docs/dashboard_zonal_indeks.png)
-
-**3. Statistik per Kecamatan**
-
-![Menu Statistik](docs/dashboard_statistik.png)
-
-**4. Luas Kelas per Kecamatan**
-
-![Menu Luas Kelas](docs/dashboard_luas_kelas.png)
-
-> Dashboard berjalan lewat R, bukan langsung di GitHub. Lihat bagian *Cara Menjalankan Dashboard*.
+Dashboard berjalan lewat R, bukan langsung di GitHub. Lihat bagian *Cara Menjalankan Dashboard*.
 
 ## Hasil Utama
 
@@ -77,7 +66,6 @@ Dashboard memiliki empat menu. Layer batas kabupaten, batas kecamatan, nama keca
 ├── Klasifikasi tutupan lahan.R   # script analisis lengkap
 ├── WebGIS.R                      # dashboard Shiny dan Leaflet
 ├── Tutupan lahan.Rproj           # file project RStudio
-├── docs/                         # screenshot dashboard untuk README
 └── output/
     ├── kecamatan_wonogiri.*      # batas kecamatan (shapefile)
     ├── kabupaten_wonogiri.*      # batas kabupaten (shapefile)
@@ -109,5 +97,6 @@ Data yang dibaca dashboard sudah tersedia di folder `output/`, sehingga analisis
 
 ## Anggota Kelompok
 
-- Adam Budi Kusumo (5016241135)
-- Alif Putra Dewangga (5016241121)
+- Adam Budi Kusumo
+- Alif Putra Dewangga
+- (tambahkan anggota lain jika ada)
