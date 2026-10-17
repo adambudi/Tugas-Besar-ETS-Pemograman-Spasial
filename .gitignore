@@ -1,0 +1,10 @@
+*.SAFE/
+*.zip
+*.jp2
+*.gdb/
+.Rproj.user/
+.Rhistory
+.Rdata
+output/band/
+output/indeks/
+output/klasifikasi_wonogiri.tif
