@@ -6,7 +6,13 @@ Proyek ini mengklasifikasikan tutupan lahan Kabupaten Wonogiri menjadi empat kel
 
 ## Peta Klasifikasi Tutupan Lahan
 
-![Peta Klasifikasi Tutupan Lahan Kabupaten Wonogiri](output/peta_klasifikasi_layout.png)
+**Layout peta (QGIS)**
+
+![Layout peta QGIS](output/peta_layout_qgis.png)
+
+**Peta hasil script R**
+
+![Peta hasil R](output/peta_klasifikasi_layout.png)
 
 ## Dashboard Interaktif (Shiny dan Leaflet)
 
@@ -56,6 +62,7 @@ Dashboard berjalan lewat R, bukan langsung di GitHub. Lihat bagian *Cara Menjala
 | Awan | NDCI ≤ 0,03 dan reflektansi merah ≥ 0,20 (diterapkan terakhir) |
 
 6. Statistik indeks (mean, min, max, median, standar deviasi) dan luas tiap kelas dihitung per kecamatan.
+7. Peta akhir disusun dalam layout QGIS (judul, legenda, skala, panah utara, dan sumber data).
 
 **Keterbatasan:** klasifikasi berbasis ambang batas sederhana, sehingga lahan terbuka tanpa vegetasi dapat terklasifikasi sebagai bangunan.
 
@@ -72,7 +79,8 @@ Dashboard berjalan lewat R, bukan langsung di GitHub. Lihat bagian *Cara Menjala
     ├── zonal_statistics_kecamatan.csv
     ├── luas_kelas_kecamatan.csv
     ├── tabel_zonal_statistics.docx
-    ├── peta_klasifikasi_layout.png
+    ├── peta_layout_qgis.png      # layout peta dari QGIS
+    ├── peta_klasifikasi_layout.png   # peta dari script R
     ├── klasifikasi_50m.tif       # klasifikasi resolusi 50 m
     └── web/                      # raster per kelas untuk dashboard
 ```
@@ -81,6 +89,7 @@ Dashboard berjalan lewat R, bukan langsung di GitHub. Lihat bagian *Cara Menjala
 
 - Batas administrasi: RBI skala 1:25.000, Ina-Geoportal, Badan Informasi Geospasial (BIG).
 - Citra satelit: Sentinel-2 L2A (14 Oktober 2026), tile T49MDM, T49MEM, dan T49LDL, Copernicus (ESA).
+- Basemap pada layout QGIS: HCMGIS (Google Satellite).
 
 Citra mentah, geodatabase, dan raster beresolusi 10 m tidak disertakan karena ukurannya melebihi batas GitHub.
 
