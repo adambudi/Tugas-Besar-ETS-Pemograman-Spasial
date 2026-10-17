@@ -2,7 +2,17 @@
 
 Tugas Besar ETS Pemrograman Spasial A, Teknik Geomatika, Institut Teknologi Sepuluh Nopember.
 
-Proyek ini mengklasifikasikan tutupan lahan Kabupaten Wonogiri menjadi empat kelas (**vegetasi, bangunan, perairan, awan**) dari citra Sentinel-2 L2A tanggal 14 Oktober 2026. Hasilnya dihitung per kecamatan (zonal statistics) dan ditampilkan dalam dashboard interaktif Shiny dan Leaflet.
+[![Buka Peta Interaktif](https://img.shields.io/badge/Buka%20Peta-Leaflet-green?style=for-the-badge)](https://adambudi.github.io/Tugas-Besar-ETS-Pemograman-Spasial/)
+[![Buka Dashboard](https://img.shields.io/badge/Buka%20Dashboard-Shiny-blue?style=for-the-badge)](https://adambudi.shinyapps.io/tutupan-lahan-wonogiri/)
+
+Proyek ini mengklasifikasikan tutupan lahan Kabupaten Wonogiri menjadi empat kelas (**vegetasi, bangunan, perairan, awan**) dari citra Sentinel-2 L2A tanggal 14 Oktober 2026. Hasilnya dihitung per kecamatan (zonal statistics) dan ditampilkan dalam peta interaktif Leaflet dan dashboard Shiny.
+
+## Akses Online
+
+| Tampilan | Isi | Link |
+|---|---|---|
+| **Peta Interaktif (Leaflet)** | Peta tutupan lahan dengan layer yang dapat dinyalakan atau dimatikan | https://adambudi.github.io/Tugas-Besar-ETS-Pemograman-Spasial/ |
+| **Dashboard (Shiny)** | Peta, zonal indeks, statistik, dan luas kelas per kecamatan | https://adambudi.shinyapps.io/tutupan-lahan-wonogiri/ |
 
 ## Peta Klasifikasi Tutupan Lahan
 
@@ -14,16 +24,16 @@ Proyek ini mengklasifikasikan tutupan lahan Kabupaten Wonogiri menjadi empat kel
 
 ![Peta hasil R](output/peta_klasifikasi_layout.png)
 
-## Dashboard Interaktif (Shiny dan Leaflet)
+## Fitur Peta Interaktif dan Dashboard
 
-Dashboard memiliki empat menu:
+**Peta Interaktif (Leaflet):** layer batas kabupaten, batas kecamatan, nama kecamatan, serta kelas vegetasi, bangunan, perairan, dan awan yang dapat dinyalakan atau dimatikan. Basemap dapat dipilih (OpenStreetMap atau Citra Satelit). Klik pada kecamatan untuk melihat persentase tiap kelas.
 
-1. **Tutupan Lahan**: peta interaktif dengan layer batas kabupaten, batas kecamatan, nama kecamatan, serta kelas vegetasi, bangunan, perairan, dan awan yang dapat dinyalakan atau dimatikan. Basemap dapat dipilih (OpenStreetMap atau Citra Satelit).
+**Dashboard (Shiny)** memiliki empat menu:
+
+1. **Tutupan Lahan**: peta interaktif seperti di atas.
 2. **Zonal Indeks per Kecamatan**: peta rata-rata NDVI, NDBI, NDWI, dan NDCI per kecamatan.
 3. **Statistik per Kecamatan**: tabel zonal statistics, histogram, dan grafik rata-rata indeks.
 4. **Luas Kelas per Kecamatan**: tabel luas dan grafik komposisi tutupan lahan.
-
-Dashboard berjalan lewat R, bukan langsung di GitHub. Lihat bagian *Cara Menjalankan Dashboard*.
 
 ## Hasil Utama
 
@@ -73,6 +83,8 @@ Dashboard berjalan lewat R, bukan langsung di GitHub. Lihat bagian *Cara Menjala
 ├── Klasifikasi tutupan lahan.R   # script analisis lengkap
 ├── WebGIS.R                      # dashboard Shiny dan Leaflet
 ├── Tutupan lahan.Rproj           # file project RStudio
+├── docs/
+│   └── index.html                # peta Leaflet (GitHub Pages)
 └── output/
     ├── kecamatan_wonogiri.*      # batas kecamatan (shapefile)
     ├── kabupaten_wonogiri.*      # batas kabupaten (shapefile)
@@ -93,7 +105,7 @@ Dashboard berjalan lewat R, bukan langsung di GitHub. Lihat bagian *Cara Menjala
 
 Citra mentah, geodatabase, dan raster beresolusi 10 m tidak disertakan karena ukurannya melebihi batas GitHub.
 
-## Cara Menjalankan Dashboard
+## Cara Menjalankan Dashboard Sendiri
 
 1. Clone repository ini, lalu buka `Tutupan lahan.Rproj` di RStudio.
 2. Pasang package yang dibutuhkan:
@@ -108,4 +120,3 @@ Data yang dibaca dashboard sudah tersedia di folder `output/`, sehingga analisis
 
 - Adam Budi Kusumo    (5016241135)
 - Alif Putra Dewangga (5016241121)
-- (tambahkan anggota lain jika ada)
