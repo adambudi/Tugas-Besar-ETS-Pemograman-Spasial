@@ -16,24 +16,6 @@ Teknik Geomatika, Institut Teknologi Sepuluh Nopember (ITS)
 
 ---
 
-## Daftar Isi
-
-1. [Dashboard Online](#dashboard-online)
-2. [Latar Belakang dan Tujuan](#latar-belakang-dan-tujuan)
-3. [Data yang Digunakan](#data-yang-digunakan)
-4. [Alur Kerja](#alur-kerja)
-5. [Metode](#metode)
-6. [Hasil](#hasil)
-7. [Peta](#peta)
-8. [Fitur Dashboard](#fitur-dashboard)
-9. [Struktur Repository](#struktur-repository)
-10. [Cara Menjalankan](#cara-menjalankan)
-11. [Keterbatasan](#keterbatasan)
-12. [Sumber Data dan Atribusi](#sumber-data-dan-atribusi)
-13. [Anggota Kelompok](#anggota-kelompok)
-
----
-
 ## Dashboard Online
 
 Dashboard bisa dibuka siapa saja lewat browser, tanpa instalasi apa pun:
