@@ -53,18 +53,13 @@ tabel_lc <- cbind(Kecamatan = lc$Kecamatan,
                   `Total (km2)` = round(rowSums(lc[, kol_km2]), 2),
                   setNames(lc[, kol_persen], paste0(nama_kelas, " (%)")))
 
-# ---- 4. Raster klasifikasi (satu layer per kelas) ----------------------
-f50    <- "output/klasifikasi_50m.tif"
-kelas50 <- if (file.exists(f50)) raster(f50) else NULL
+# ---- 4. Raster klasifikasi (ringan, 100 m) -----------------------------
+kelas50  <- raster("output/klasifikasi_50m.tif")
+kelas100 <- aggregate(kelas50, fact = 2, fun = modal, na.rm = TRUE)
 
-muat_kelas <- function(i) {
-  f <- sprintf("output/web/kelas_%s.tif", nama_kelas[i])
-  if (file.exists(f)) return(raster(f))
-  if (is.null(kelas50)) stop("Raster klasifikasi tidak ditemukan di folder output/")
-  calc(kelas50, function(x) ifelse(x == i, 1, NA))
-}
-r_kelas <- lapply(seq_along(nama_kelas), muat_kelas)
-
+r_kelas <- lapply(seq_along(nama_kelas), function(i) {
+  calc(kelas100, function(x) ifelse(x == i, 1, NA))
+})
 # ---- 5. Fungsi bantu peta ----------------------------------------------
 dasar_nama <- c("OpenStreetMap", "Citra Satelit")
 
@@ -195,7 +190,7 @@ server <- function(input, output, session) {
                             na.color = "transparent")
       m <- m %>% addRasterImage(r_kelas[[i]], colors = pal_i, method = "ngb",
                                 opacity = 0.9, group = nama_kelas[i],
-                                maxBytes = 20 * 1024 * 1024)
+                                maxBytes = 4 * 1024 * 1024)
     }
     
     m %>%
