@@ -1,122 +1,277 @@
-# Klasifikasi Tutupan Lahan Kabupaten Wonogiri Menggunakan Sentinel-2 L2A
+<div align="center">
 
-Tugas Besar ETS Pemrograman Spasial A, Teknik Geomatika, Institut Teknologi Sepuluh Nopember.
+# Klasifikasi Tutupan Lahan Kabupaten Wonogiri
 
-[![Buka Peta Interaktif](https://img.shields.io/badge/Buka%20Peta-Leaflet-green?style=for-the-badge)](https://adambudi.github.io/Tugas-Besar-ETS-Pemograman-Spasial/)
-[![Buka Dashboard](https://img.shields.io/badge/Buka%20Dashboard-Shiny-blue?style=for-the-badge)](https://adambudi.shinyapps.io/tutupan-lahan-wonogiri/)
+**Analisis indeks spektral Sentinel-2 L2A, klasifikasi berbasis threshold, statistik zonal per kecamatan, dan WebGIS interaktif (R Shiny + Leaflet)**
 
-Proyek ini mengklasifikasikan tutupan lahan Kabupaten Wonogiri menjadi empat kelas (**vegetasi, bangunan, perairan, awan**) dari citra Sentinel-2 L2A tanggal 14 Oktober 2026. Hasilnya dihitung per kecamatan (zonal statistics) dan ditampilkan dalam peta interaktif Leaflet dan dashboard Shiny.
+[![Dashboard](https://img.shields.io/badge/Dashboard-Buka%20Online-2E7D32?style=for-the-badge&logo=r&logoColor=white)](https://adambudi.shinyapps.io/tutupan-lahan-wonogiri/)
+![R](https://img.shields.io/badge/R-Shiny-276DC3?style=for-the-badge&logo=r&logoColor=white)
+![Sentinel-2](https://img.shields.io/badge/Data-Sentinel--2%20L2A-blue?style=for-the-badge)
+![CRS](https://img.shields.io/badge/CRS-UTM%2049S-orange?style=for-the-badge)
 
-## Akses Online
+Tugas Besar ETS, Pemrograman Spasial A
+Teknik Geomatika, Institut Teknologi Sepuluh Nopember (ITS)
 
-| Tampilan | Isi | Link |
+</div>
+
+---
+
+## Daftar Isi
+
+1. [Dashboard Online](#dashboard-online)
+2. [Latar Belakang dan Tujuan](#latar-belakang-dan-tujuan)
+3. [Data yang Digunakan](#data-yang-digunakan)
+4. [Alur Kerja](#alur-kerja)
+5. [Metode](#metode)
+6. [Hasil](#hasil)
+7. [Peta](#peta)
+8. [Fitur Dashboard](#fitur-dashboard)
+9. [Struktur Repository](#struktur-repository)
+10. [Cara Menjalankan](#cara-menjalankan)
+11. [Keterbatasan](#keterbatasan)
+12. [Sumber Data dan Atribusi](#sumber-data-dan-atribusi)
+13. [Anggota Kelompok](#anggota-kelompok)
+
+---
+
+## Dashboard Online
+
+Dashboard bisa dibuka siapa saja lewat browser, tanpa instalasi apa pun:
+
+### [Tutupan Lahan](https://adambudi.shinyapps.io/tutupan-lahan-wonogiri/)
+
+```
+https://adambudi.shinyapps.io/tutupan-lahan-wonogiri/
+```
+
+> Dashboard di-host di shinyapps.io (paket gratis). Jika aplikasi sedang tidak aktif, halaman butuh beberapa detik untuk menyala kembali. Tunggu sampai tampilan muncul.
+
+---
+
+## Latar Belakang dan Tujuan
+
+Informasi tutupan lahan dibutuhkan untuk perencanaan wilayah, pemantauan lingkungan, dan pengelolaan sumber daya. Citra satelit Sentinel-2 menyediakan data multispektral beresolusi 10 sampai 20 m yang gratis dan terbuka, sehingga cocok untuk memetakan tutupan lahan tingkat kabupaten.
+
+Tujuan proyek ini:
+
+1. Menghitung indeks spektral **NDVI, NDBI, NDWI, dan NDCI** dari citra Sentinel-2 L2A untuk Kabupaten Wonogiri.
+2. Mengklasifikasikan tutupan lahan menjadi **vegetasi, bangunan, perairan, dan awan** dengan metode threshold.
+3. Menghitung **statistik zonal** setiap indeks dan **luas tiap kelas** per kecamatan.
+4. Menyajikan hasil dalam **peta cetak** (layout) dan **dashboard interaktif** yang dapat diakses publik.
+
+---
+
+## Data yang Digunakan
+
+| Data | Keterangan | Sumber |
 |---|---|---|
-| **Peta Interaktif (Leaflet)** | Peta tutupan lahan dengan layer yang dapat dinyalakan atau dimatikan | https://adambudi.github.io/Tugas-Besar-ETS-Pemograman-Spasial/ |
-| **Dashboard (Shiny)** | Peta, zonal indeks, statistik, dan luas kelas per kecamatan | https://adambudi.shinyapps.io/tutupan-lahan-wonogiri/ |
+| Citra Sentinel-2 L2A | Band B03, B04, B05, B08, B11 (koreksi atmosfer, reflektansi permukaan) | Copernicus Data Space Ecosystem |
+| Batas administrasi | RBI 25K 2022 (batas kabupaten dan kecamatan) | BIG melalui Ina-Geoportal |
+| Peta dasar dashboard | Google Satellite dan peta dasar lainnya | HCMGIS / Leaflet providers |
 
-## Peta Klasifikasi Tutupan Lahan
+Sistem koordinat seluruh analisis: **UTM Zona 49S (EPSG:32749)**.
 
-**Layout peta (QGIS)**
+---
 
-![Layout peta QGIS](output/peta_layout_qgis.png)
+## Alur Kerja
 
-**Peta hasil script R**
+```
+Citra Sentinel-2 L2A  +  Batas RBI 25K
+              │
+              ▼
+   Pemotongan ke Kab. Wonogiri
+              │
+              ▼
+ Konversi ke reflektansi (DN - 1000) / 10000
+              │
+              ▼
+ Hitung indeks: NDVI, NDBI, NDWI, NDCI
+              │
+              ▼
+ Klasifikasi threshold (vegetasi, bangunan, perairan, awan)
+              │
+              ▼
+ Statistik zonal per kecamatan (indeks + luas kelas)
+              │
+              ├──► Tabel (CSV dan Word)
+              ├──► Peta layout (QGIS dan R)
+              └──► Dashboard Shiny + Leaflet
+```
 
-![Peta hasil R](output/peta_klasifikasi_layout.png)
-
-## Fitur Peta Interaktif dan Dashboard
-
-**Peta Interaktif (Leaflet):** layer batas kabupaten, batas kecamatan, nama kecamatan, serta kelas vegetasi, bangunan, perairan, dan awan yang dapat dinyalakan atau dimatikan. Basemap dapat dipilih (OpenStreetMap atau Citra Satelit). Klik pada kecamatan untuk melihat persentase tiap kelas.
-
-**Dashboard (Shiny)** memiliki empat menu:
-
-1. **Tutupan Lahan**: peta interaktif seperti di atas.
-2. **Zonal Indeks per Kecamatan**: peta rata-rata NDVI, NDBI, NDWI, dan NDCI per kecamatan.
-3. **Statistik per Kecamatan**: tabel zonal statistics, histogram, dan grafik rata-rata indeks.
-4. **Luas Kelas per Kecamatan**: tabel luas dan grafik komposisi tutupan lahan.
-
-## Hasil Utama
-
-| Kelas | Persentase luas |
-|---|---|
-| Vegetasi | 83,74% |
-| Bangunan | 13,93% |
-| Perairan | 1,50% |
-| Awan | 0,83% |
-
-- Wilayah studi terdiri dari **25 kecamatan**, dan citra menutupi seluruh wilayah (cakupan sekitar 100%).
-- Rata-rata NDVI tertinggi: **Kecamatan Jatipurno (0,610)**.
-- Rata-rata NDVI terendah: **Kecamatan Baturetno (0,334)**.
+---
 
 ## Metode
 
-1. Batas kecamatan RBI 25K difilter untuk Kabupaten Wonogiri dan diubah ke UTM zona 49S (EPSG:32749).
-2. Band Sentinel-2 L2A (B03, B04, B05, B08, B11) dipotong, digabung (mosaic) dari tile yang menutupi wilayah, dan di-mask ke batas kabupaten.
-3. Nilai piksel dikonversi ke reflektansi: `(DN - 1000) / 10000`.
-4. Empat indeks spektral dihitung:
+### 1. Pra-pemrosesan
+
+Nilai piksel Sentinel-2 L2A dikonversi menjadi reflektansi permukaan:
+
+```
+reflektansi = (DN - 1000) / 10000      (nilai negatif dibatasi menjadi 0)
+```
+
+Seluruh band dipotong sesuai batas Kabupaten Wonogiri dan diproyeksikan ke UTM 49S.
+
+### 2. Indeks Spektral
 
 | Indeks | Rumus | Kegunaan |
 |---|---|---|
-| NDVI | (B08 - B04) / (B08 + B04) | Vegetasi |
+| NDVI | (B08 - B04) / (B08 + B04) | Kerapatan vegetasi |
 | NDBI | (B11 - B08) / (B11 + B08) | Lahan terbangun |
-| NDWI | (B03 - B08) / (B03 + B08) | Perairan |
-| NDCI | (B05 - B04) / (B05 + B04) | Indikator awan |
+| NDWI | (B03 - B08) / (B03 + B08) | Badan air |
+| NDCI | (B05 - B04) / (B05 + B04) | Deteksi awan |
 
-5. Klasifikasi berbasis ambang batas:
+### 3. Klasifikasi Threshold
 
-| Kelas | Aturan |
+Aturan diterapkan berurutan. Aturan yang lebih akhir menimpa aturan sebelumnya.
+
+| Urutan | Kelas | Aturan |
+|---|---|---|
+| 1 | Vegetasi | NDVI >= 0,30 |
+| 2 | Bangunan | NDBI > 0,15 |
+| 3 | Perairan | NDWI > 0 |
+| 4 | Awan | NDCI <= 0,03 **dan** reflektansi band merah >= 0,20 |
+
+### 4. Statistik Zonal
+
+Untuk setiap kecamatan dihitung rata-rata, nilai minimum, dan nilai maksimum tiap indeks. Luas dan persentase tiap kelas tutupan lahan dihitung dari raster klasifikasi.
+
+---
+
+## Hasil
+
+### Proporsi tutupan lahan Kabupaten Wonogiri
+
+| Kelas | Proporsi |
 |---|---|
-| Vegetasi | NDVI ≥ 0,30 |
-| Bangunan | NDVI < 0,30 dan NDBI > 0,15 |
-| Perairan | NDWI > 0 (menimpa vegetasi dan bangunan) |
-| Awan | NDCI ≤ 0,03 dan reflektansi merah ≥ 0,20 (diterapkan terakhir) |
+| Vegetasi | 83,74 % |
+| Bangunan | 13,93 % |
+| Perairan | 1,50 % |
+| Awan | 0,83 % |
 
-6. Statistik indeks (mean, min, max, median, standar deviasi) dan luas tiap kelas dihitung per kecamatan.
-7. Peta akhir disusun dalam layout QGIS (judul, legenda, skala, panah utara, grid koordinat, dan sumber data).
+### Temuan utama
 
-**Keterbatasan:** klasifikasi berbasis ambang batas sederhana, sehingga lahan terbuka tanpa vegetasi dapat terklasifikasi sebagai bangunan.
+- Wilayah analisis mencakup **25 kecamatan**.
+- Kecamatan dengan NDVI rata-rata tertinggi: **Jatipurno (0,610)**.
+- Kecamatan dengan NDVI rata-rata terendah: **Baturetno (0,334)**.
+- Vegetasi mendominasi wilayah kabupaten, sedangkan perairan yang terdeteksi berkaitan dengan waduk dan badan air besar.
+
+Tabel lengkap tersedia di folder `output/`:
+
+| File | Isi |
+|---|---|
+| `zonal_statistics_kecamatan.csv` | Statistik zonal indeks per kecamatan |
+| `luas_kelas_kecamatan.csv` | Luas dan persentase kelas per kecamatan |
+
+---
+
+## Peta
+
+### Peta layout (QGIS)
+
+![Peta layout QGIS](output/peta_layout_qgis.png)
+
+### Peta klasifikasi (R)
+
+![Peta klasifikasi R](output/peta_klasifikasi_layout.png)
+
+Kelengkapan peta: judul, legenda, skala (meter), panah utara, grid koordinat UTM 49S, dan sumber data.
+
+---
+
+## Fitur Dashboard
+
+Dashboard dibangun dengan **R Shiny**, **shinydashboard**, dan **Leaflet**.
+
+| Menu | Isi |
+|---|---|
+| **Tutupan Lahan** | Peta klasifikasi interaktif, pilihan peta dasar, dan pengaturan transparansi layer |
+| **Zonal Indeks per Kecamatan** | Peta tematik rata-rata NDVI, NDBI, NDWI, dan NDCI per kecamatan |
+| **Statistik per Kecamatan** | Tabel statistik zonal dan histogram indeks |
+| **Luas Kelas per Kecamatan** | Luas dan persentase tiap kelas tutupan lahan per kecamatan |
+
+---
 
 ## Struktur Repository
 
 ```
-.
-├── Klasifikasi tutupan lahan.R   # script analisis lengkap
-├── WebGIS.R                      # dashboard Shiny dan Leaflet
-├── Tutupan lahan.Rproj           # file project RStudio
-├── docs/
-│   └── index.html                # peta Leaflet (GitHub Pages)
-└── output/
-    ├── kecamatan_wonogiri.*      # batas kecamatan (shapefile)
-    ├── kabupaten_wonogiri.*      # batas kabupaten (shapefile)
-    ├── zonal_statistics_kecamatan.csv
-    ├── luas_kelas_kecamatan.csv
-    ├── tabel_zonal_statistics.docx
-    ├── peta_layout_qgis.png      # layout peta dari QGIS
-    ├── peta_klasifikasi_layout.png   # peta dari script R
-    ├── klasifikasi_50m.tif       # klasifikasi resolusi 50 m
-    └── web/                      # raster per kelas untuk dashboard
+Tutupan lahan/
+├── Klasifikasi tutupan lahan.R    # Script analisis: indeks, klasifikasi, zonal, tabel
+├── WebGIS.R                       # Script dashboard Shiny
+├── app.R                          # Salinan WebGIS.R untuk deploy ke shinyapps.io
+├── Tutupan lahan.Rproj            # Project RStudio
+├── output/
+│   ├── kecamatan_wonogiri.shp     # Batas kecamatan (beserta file pendampingnya)
+│   ├── kabupaten_wonogiri.shp     # Batas kabupaten
+│   ├── zonal_statistics_kecamatan.csv
+│   ├── luas_kelas_kecamatan.csv
+│   ├── klasifikasi_50m.tif        # Raster klasifikasi resolusi 50 m (ringan)
+│   ├── web/                       # Raster per kelas untuk dashboard
+│   ├── peta_layout_qgis.png
+│   └── peta_klasifikasi_layout.png
+├── README.md
+└── .gitignore
 ```
 
-## Sumber Data
+> Citra Sentinel-2 mentah dan raster beresolusi penuh tidak diunggah ke repository karena melebihi batas ukuran file GitHub (100 MB).
 
-- Citra satelit: Sentinel-2 L2A, akuisisi 14 Oktober 2026. Contains modified Copernicus Sentinel data (2026), Copernicus Data Space Ecosystem.
-- Batas administrasi: Peta RBI skala 1:25.000 (2022), Badan Informasi Geospasial (BIG), melalui Ina-Geoportal.
-- Peta dasar pada layout QGIS: Google Satellite © Google, diakses melalui plugin HCMGIS.
+---
 
-Citra mentah, geodatabase, dan raster beresolusi 10 m tidak disertakan karena ukurannya melebihi batas GitHub.
+## Cara Menjalankan
 
-## Cara Menjalankan Dashboard Sendiri
+### Opsi 1: Buka dashboard online
 
-1. Clone repository ini, lalu buka `Tutupan lahan.Rproj` di RStudio.
-2. Pasang package yang dibutuhkan:
+Cukup klik: **https://adambudi.shinyapps.io/tutupan-lahan-wonogiri/**
+
+### Opsi 2: Jalankan dashboard di komputer sendiri
+
+1. Clone repository:
+```bash
+   git clone https://github.com/adambudi/Tugas-Besar-ETS-Pemrograman-Spasial.git
+```
+2. Buka folder hasil clone di RStudio.
+3. Pasang paket yang dibutuhkan (samakan dengan `library(...)` di `app.R`):
 ```r
-   install.packages(c("shiny", "shinydashboard", "leaflet", "leaflet.extras", "raster", "sf"))
+   install.packages(c("shiny", "shinydashboard", "leaflet", "leaflet.extras",
+                      "sf", "dplyr", "terra", "raster"))
 ```
-3. Buka `WebGIS.R`, lalu klik **Run App**.
+4. Jalankan:
+```r
+   shiny::runApp("app.R")
+```
 
-Data yang dibaca dashboard sudah tersedia di folder `output/`, sehingga analisis tidak perlu dijalankan ulang. Untuk mengulang seluruh analisis dari citra mentah, jalankan `Klasifikasi tutupan lahan.R` dengan menyesuaikan lokasi data di bagian awal script.
+Pastikan folder `output/` berada di folder yang sama dengan `app.R`.
+
+### Opsi 3: Ulangi seluruh analisis
+
+1. Unduh citra Sentinel-2 L2A area Wonogiri dari Copernicus Data Space Ecosystem dan batas RBI 25K dari Ina-Geoportal.
+2. Atur path data di bagian awal `Klasifikasi tutupan lahan.R`.
+3. Jalankan script dari atas ke bawah. Hasil akan tersimpan di folder `output/`.
+
+---
+
+## Keterbatasan
+
+- Klasifikasi memakai **threshold tetap** (tanpa training data), sehingga hasilnya bisa tertukar antar kelas pada area yang spektralnya mirip, misalnya lahan terbuka dan bangunan.
+- Kelas **awan** dideteksi dari satu tanggal akuisisi. Bayangan awan tidak diklasifikasikan secara khusus.
+- Belum ada **uji akurasi** terhadap data referensi lapangan.
+- Resolusi dashboard diturunkan (50 m) agar ringan dan cepat dimuat.
+
+---
+
+## Sumber Data dan Atribusi
+
+- Contains modified Copernicus Sentinel data (2026), diunduh dari Copernicus Data Space Ecosystem.
+- Batas administrasi: RBI 25K 2022, Badan Informasi Geospasial (BIG), melalui Ina-Geoportal.
+- Peta dasar: Google Satellite © Google, melalui HCMGIS.
+
+---
 
 ## Anggota Kelompok
 
-- Adam Budi Kusumo    (5016241135)
-- Alif Putra Dewangga (5016241121)
+| Nama | Program Studi |
+|---|---|
+| Adam Budi Kusumo | 5016241135 |
+| Alif Putra Dewangga | 5016241121 |
+
+Mata kuliah: Pemrograman Spasial A, 2026
