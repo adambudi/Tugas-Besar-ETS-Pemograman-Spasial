@@ -175,7 +175,7 @@ ui <- dashboardPage(
     )
   )
 )
-
+sampel_all <- read.csv("output/sampel_indeks.csv")
 # ==============================================================
 # Server
 # ==============================================================
@@ -251,14 +251,10 @@ server <- function(input, output, session) {
   
   output$tbl_luas <- renderTable(tabel_lc, striped = TRUE, digits = 2)
   
-  # ---- histogram nilai indeks (sampel piksel dari raster 10 m) ----
+  # ---- histogram nilai indeks (sampel piksel dari CSV ringan) ----
   sampel <- reactive({
-    n <- input$indeks
-    f <- sprintf("output/indeks/%s_%s.tif", n, sfx)
-    validate(need(file.exists(f), paste("File tidak ditemukan:", f)))
-    v <- as.numeric(sampleRegular(raster(f), size = 2e5, useGDAL = TRUE))
-    v[is.finite(v)]
-  }) |> bindCache(input$indeks)
+    sampel_all$nilai[sampel_all$indeks == input$indeks]
+  })
   
   output$hist_idx <- renderPlot({
     n <- input$indeks

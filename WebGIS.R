@@ -1,270 +1,292 @@
-<div align="center">
-  
-  # Klasifikasi Tutupan Lahan Kabupaten Wonogiri
-  
-  **Indeks spektral Sentinel-2 L2A, klasifikasi berbasis threshold, statistik zonal per kecamatan, dan WebGIS interaktif (R Shiny + Leaflet)**
-  
-  [![Buka Dashboard](https://img.shields.io/badge/Buka%20Dashboard-shinyapps.io-2E7D32?style=for-the-badge&logo=r&logoColor=white)](https://adambudi.shinyapps.io/tutupan-lahan-wonogiri/)
-![R](https://img.shields.io/badge/R-Shiny-276DC3?style=for-the-badge&logo=r&logoColor=white)
-![Sentinel-2](https://img.shields.io/badge/Data-Sentinel--2%20L2A-blue?style=for-the-badge)
-![CRS](https://img.shields.io/badge/CRS-UTM%2049S-orange?style=for-the-badge)
+library(shiny)
+library(shinydashboard)
+library(leaflet)
+library(leaflet.extras)
+library(raster)
+library(sf)
 
-Tugas Besar ETS, Pemrograman Spasial A
-Teknik Geomatika, Institut Teknologi Sepuluh Nopember (ITS)
+# ==============================================================
+# Dashboard Tutupan Lahan - Sentinel-2 L2A
+# Semua data dibaca dari folder output/ (hasil script analisis)
+# ==============================================================
 
-</div>
-  
-  ---
-  
-  ## Dashboard Online
-  
-  Dashboard dapat dibuka siapa saja melalui browser, tanpa instalasi apa pun:
-  
-  ### [Tutupan Lahan](https://adambudi.shinyapps.io/tutupan-lahan-wonogiri/)
-  
-  ```
-https://adambudi.shinyapps.io/tutupan-lahan-wonogiri/
-  ```
+wil <- "Wonogiri"          # nama wilayah (dipakai untuk judul dan nama file)
+sfx <- tolower(wil)
 
-> Dashboard di-host di shinyapps.io (paket gratis). Jika aplikasi sedang tidak aktif, halaman butuh sekitar 10 sampai 20 detik untuk menyala kembali. Tunggu sampai tampilan muncul.
+# ---- 1. Data vektor ----------------------------------------------------
+kec <- st_read(sprintf("output/kecamatan_%s.shp", sfx), quiet = TRUE) |> st_transform(4326)
+kab <- st_read(sprintf("output/kabupaten_%s.shp", sfx), quiet = TRUE) |> st_transform(4326)
 
----
-  
-  ## Latar Belakang dan Tujuan
-  
-  Informasi tutupan lahan dibutuhkan untuk perencanaan wilayah, pemantauan lingkungan, dan pengelolaan sumber daya. Citra Sentinel-2 menyediakan data multispektral beresolusi 10 sampai 20 m yang gratis dan terbuka, sehingga cocok untuk memetakan tutupan lahan tingkat kabupaten.
+kol_nama <- intersect(c("WADMKC", "KECAMATAN"), names(kec))[1]
+kec$nama <- trimws(as.character(kec[[kol_nama]]))
 
-Tujuan proyek ini:
-  
-  1. Menghitung indeks spektral **NDVI, NDBI, NDWI, dan NDCI** dari citra Sentinel-2 L2A untuk Kabupaten Wonogiri.
-2. Mengklasifikasikan tutupan lahan menjadi **vegetasi, bangunan, perairan, dan awan** dengan metode threshold.
-3. Menghitung **statistik zonal** setiap indeks dan **luas tiap kelas** per kecamatan.
-4. Menyajikan hasil dalam **peta cetak** (layout) dan **dashboard interaktif** yang dapat diakses publik.
+pusat <- suppressWarnings(st_coordinates(st_point_on_surface(st_geometry(kec))))
+bb    <- st_bbox(kab)
 
----
-  
-  ## Data yang Digunakan
-  
-  | Data | Keterangan | Sumber |
-  |---|---|---|
-  | Citra Sentinel-2 L2A | Band B03, B04, B05, B08, B11 (reflektansi permukaan terkoreksi atmosfer) | Copernicus Data Space Ecosystem |
-  | Batas administrasi | RBI 25K 2022 (batas kabupaten dan kecamatan) | BIG melalui Ina-Geoportal |
-  | Peta dasar dashboard | OpenStreetMap dan Esri World Imagery | Leaflet providers |
-  
-  Sistem koordinat analisis: **UTM Zona 49S (EPSG:32749)**.
+# ---- 2. Data tabel -----------------------------------------------------
+zs <- read.csv("output/zonal_statistics_kecamatan.csv", check.names = FALSE)
+lc <- read.csv("output/luas_kelas_kecamatan.csv",       check.names = FALSE)
+zs$Kecamatan <- trimws(zs$Kecamatan)
+lc$Kecamatan <- trimws(lc$Kecamatan)
 
----
-  
-  ## Alur Kerja
-  
-  ```
-Citra Sentinel-2 L2A  +  Batas RBI 25K
-│
-▼
-Pemotongan ke Kabupaten Wonogiri
-│
-▼
-Konversi ke reflektansi (DN - 1000) / 10000
-│
-▼
-Hitung indeks: NDVI, NDBI, NDWI, NDCI
-│
-▼
-Klasifikasi threshold (vegetasi, bangunan, perairan, awan)
-│
-▼
-Statistik zonal per kecamatan (indeks + luas kelas)
-│
-├──► Tabel (CSV dan Word)
-├──► Peta layout (QGIS dan R)
-└──► Dashboard Shiny + Leaflet (shinyapps.io)
-```
+# ---- 3. Pengaturan kelas dan indeks ------------------------------------
+nama_kelas <- c("Vegetasi", "Bangunan", "Perairan", "Awan")
+warna      <- c("#2E7D32", "#E53935", "#1E88E5", "#B0BEC5")
 
----
-  
-  ## Metode
-  
-  ### 1. Pra-pemrosesan
-  
-  Nilai piksel Sentinel-2 L2A dikonversi menjadi reflektansi permukaan:
-  
-  ```
-reflektansi = (DN - 1000) / 10000      (nilai negatif dibatasi menjadi 0)
-```
+idx_nama  <- c("NDVI", "NDBI", "NDWI", "NDCI")
+idx_warna <- c(NDVI = "#2E7D32", NDBI = "#E53935", NDWI = "#1E88E5", NDCI = "#7B1FA2")
+idx_pal   <- c(NDVI = "YlGn",    NDBI = "YlOrRd",  NDWI = "Blues",   NDCI = "Purples")
 
-Seluruh band dipotong sesuai batas Kabupaten Wonogiri dan diproyeksikan ke UTM 49S.
+kol_km2   <- paste0(nama_kelas, "_km2")
+kol_persen <- paste0(nama_kelas, "_persen")
 
-### 2. Indeks Spektral
+tot_km2 <- colSums(lc[, kol_km2])
+tot_pct <- tot_km2 / sum(tot_km2) * 100
 
-| Indeks | Rumus | Kegunaan |
-  |---|---|---|
-  | NDVI | (B08 - B04) / (B08 + B04) | Kerapatan vegetasi |
-  | NDBI | (B11 - B08) / (B11 + B08) | Lahan terbangun |
-  | NDWI | (B03 - B08) / (B03 + B08) | Badan air |
-  | NDCI | (B05 - B04) / (B05 + B04) | Deteksi awan |
-  
-  ### 3. Klasifikasi Threshold
-  
-  Aturan diterapkan berurutan. Aturan yang lebih akhir menimpa aturan sebelumnya.
+tabel_total <- data.frame(Kelas = nama_kelas,
+                          `Luas (km2)` = round(tot_km2, 2),
+                          `Persen (%)` = round(tot_pct, 2),
+                          check.names = FALSE)
 
-| Urutan | Kelas | Aturan |
-  |---|---|---|
-  | 1 | Vegetasi | NDVI >= 0,30 |
-  | 2 | Bangunan | NDBI > 0,15 |
-  | 3 | Perairan | NDWI > 0 |
-  | 4 | Awan | NDCI <= 0,03 **dan** reflektansi band merah >= 0,20 |
-  
-  ### 4. Statistik Zonal
-  
-  Untuk setiap kecamatan dihitung rata-rata, minimum, maksimum, median, dan standar deviasi tiap indeks. Luas (km²) dan persentase tiap kelas tutupan lahan dihitung dari raster klasifikasi.
+tabel_lc <- cbind(Kecamatan = lc$Kecamatan,
+                  setNames(lc[, kol_km2], paste0(nama_kelas, " (km2)")),
+                  `Total (km2)` = round(rowSums(lc[, kol_km2]), 2),
+                  setNames(lc[, kol_persen], paste0(nama_kelas, " (%)")))
 
----
-  
-  ## Hasil
-  
-  ### Proporsi tutupan lahan Kabupaten Wonogiri
-  
-  | Kelas | Proporsi |
-  |---|---|
-  | Vegetasi | 83,74 % |
-  | Bangunan | 13,93 % |
-  | Perairan | 1,50 % |
-  | Awan | 0,83 % |
-  
-  ### Temuan utama
-  
-  - Wilayah analisis mencakup **25 kecamatan**.
-- NDVI rata-rata tertinggi: **Kecamatan Jatipurno (0,610)**.
-- NDVI rata-rata terendah: **Kecamatan Baturetno (0,334)**.
-- Vegetasi mendominasi wilayah kabupaten.
+# ---- 4. Raster klasifikasi (ringan, 100 m) -----------------------------
+kelas50  <- raster("output/klasifikasi_50m.tif")
+kelas100 <- aggregate(kelas50, fact = 2, fun = modal, na.rm = TRUE)
 
-Tabel lengkap tersedia di folder `output/`:
-  
-  | File | Isi |
-  |---|---|
-  | `zonal_statistics_kecamatan.csv` | Statistik zonal indeks per kecamatan |
-  | `luas_kelas_kecamatan.csv` | Luas dan persentase kelas per kecamatan |
-  
-  ---
-  
-  ## Peta
-  
-  ### Peta layout (QGIS)
-  
-  ![Peta layout QGIS](output/peta_layout_qgis.png)
+r_kelas <- lapply(seq_along(nama_kelas), function(i) {
+  calc(kelas100, function(x) ifelse(x == i, 1, NA))
+})
+# ---- 5. Fungsi bantu peta ----------------------------------------------
+dasar_nama <- c("OpenStreetMap", "Citra Satelit")
 
-### Peta klasifikasi (R)
+dasar <- function(m) {
+  m %>%
+    addProviderTiles(providers$OpenStreetMap,     group = dasar_nama[1]) %>%
+    addProviderTiles(providers$Esri.WorldImagery, group = dasar_nama[2]) %>%
+    fitBounds(bb[["xmin"]], bb[["ymin"]], bb[["xmax"]], bb[["ymax"]]) %>%
+    addFullscreenControl() %>%
+    addScaleBar(position = "bottomleft")
+}
 
-![Peta klasifikasi R](output/peta_klasifikasi_layout.png)
+tambah_nama <- function(m) {
+  addLabelOnlyMarkers(m, lng = pusat[, 1], lat = pusat[, 2], label = kec$nama,
+                      group = "Nama Kecamatan",
+                      labelOptions = labelOptions(
+                        noHide = TRUE, textOnly = TRUE, direction = "center",
+                        style = list("font-weight" = "bold", "font-size" = "11px",
+                                     "text-shadow" = "0 0 3px #ffffff")))
+}
 
-Kelengkapan peta: judul, legenda, skala (meter), panah utara, grid koordinat UTM 49S, dan sumber data.
+batas_kab <- function(m) {
+  addPolygons(m, data = kab, fill = FALSE, color = "#000000", weight = 3,
+              group = "Batas Kabupaten")
+}
 
----
+# popup statistik tiap kecamatan (klik pada peta tutupan lahan)
+popup_kec <- vapply(seq_len(nrow(kec)), function(i) {
+  nm <- kec$nama[i]
+  z  <- zs[zs$Kecamatan == nm, , drop = FALSE]
+  l  <- lc[lc$Kecamatan == nm, , drop = FALSE]
+  if (nrow(z) == 0 || nrow(l) == 0) return(paste0("<b>Kecamatan ", nm, "</b>"))
   
-  ## Fitur Dashboard
+  b_idx <- vapply(idx_nama, function(n)
+    sprintf("<tr><td>%s</td><td>%.3f</td><td>%.3f</td><td>%.3f</td></tr>", n,
+            z[[paste0(n, "_mean")]], z[[paste0(n, "_min")]], z[[paste0(n, "_max")]]),
+    character(1))
+  b_kls <- vapply(nama_kelas, function(n)
+    sprintf("<tr><td>%s</td><td>%.2f</td><td>%.1f</td></tr>", n,
+            l[[paste0(n, "_km2")]], l[[paste0(n, "_persen")]]),
+    character(1))
   
-  Dashboard dibangun dengan **R Shiny**, **shinydashboard**, dan **Leaflet**. Semua data dibaca dari folder `output/`.
+  paste0("<b>Kecamatan ", nm, "</b>",
+         "<table style='width:100%;font-size:11px;margin-top:6px'>",
+         "<tr><th>Indeks</th><th>Mean</th><th>Min</th><th>Max</th></tr>",
+         paste(b_idx, collapse = ""), "</table>",
+         "<table style='width:100%;font-size:11px;margin-top:6px'>",
+         "<tr><th>Kelas</th><th>km2</th><th>%</th></tr>",
+         paste(b_kls, collapse = ""), "</table>")
+}, character(1))
 
-| Menu | Isi |
-  |---|---|
-  | **Tutupan Lahan** | Peta klasifikasi interaktif. Tiap kelas bisa dinyalakan atau dimatikan, ada pilihan peta dasar (OpenStreetMap, Citra Satelit), batas kabupaten dan kecamatan, nama kecamatan, legenda, dan popup statistik saat kecamatan diklik |
-  | **Zonal Indeks per Kecamatan** | Peta tematik rata-rata NDVI, NDBI, NDWI, dan NDCI per kecamatan |
-  | **Statistik per Kecamatan** | Tabel luas kelas, tabel zonal statistics per indeks, histogram nilai indeks, dan grafik rata-rata indeks per kecamatan |
-  | **Luas Kelas per Kecamatan** | Tabel luas dan persentase kelas per kecamatan serta grafik komposisi tutupan lahan |
+# ==============================================================
+# Tampilan
+# ==============================================================
+ui <- dashboardPage(
+  dashboardHeader(title = "Tutupan Lahan"),
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem("Maps", tabName = "maps", icon = icon("globe"), startExpanded = TRUE,
+               menuSubItem("Tutupan Lahan", tabName = "m_klas", icon = icon("map")),
+               menuSubItem("Zonal Indeks per Kecamatan", tabName = "m_zonal",
+                           icon = icon("layer-group")),
+               menuSubItem("Statistik per Kecamatan", tabName = "m_stat",
+                           icon = icon("table")),
+               menuSubItem("Luas Kelas per Kecamatan", tabName = "m_luas",
+                           icon = icon("chart-bar")))
+    )
+  ),
+  dashboardBody(
+    tags$style(type = "text/css",
+               "#peta_klas, #peta_zonal {height: calc(100vh - 80px) !important;}"),
+    tabItems(
+      # 1. peta klasifikasi tutupan lahan
+      tabItem(tabName = "m_klas", leafletOutput("peta_klas")),
+      
+      # 2. peta zonal indeks per kecamatan
+      tabItem(tabName = "m_zonal", leafletOutput("peta_zonal")),
+      
+      # 3. statistik per kecamatan
+      tabItem(tabName = "m_stat",
+              fluidRow(
+                box(title = "Luas Tiap Kelas Tutupan Lahan", width = 4,
+                    status = "primary", solidHeader = TRUE,
+                    tableOutput("tbl_total")),
+                box(title = "Zonal Statistics per Kecamatan", width = 8,
+                    status = "primary", solidHeader = TRUE,
+                    selectInput("indeks", "Pilih indeks:", idx_nama),
+                    div(style = "overflow-x:auto", tableOutput("tbl_zonal")))
+              ),
+              fluidRow(
+                box(title = "Histogram Nilai Indeks", width = 6,
+                    status = "primary", solidHeader = TRUE,
+                    plotOutput("hist_idx", height = "420px")),
+                box(title = "Rata-rata Indeks per Kecamatan", width = 6,
+                    status = "primary", solidHeader = TRUE,
+                    plotOutput("bar_idx", height = "650px"))
+              )
+      ),
+      
+      # 4. luas kelas per kecamatan
+      tabItem(tabName = "m_luas",
+              fluidRow(
+                box(title = "Luas Kelas Tutupan Lahan per Kecamatan", width = 12,
+                    status = "primary", solidHeader = TRUE,
+                    div(style = "overflow-x:auto", tableOutput("tbl_luas")))
+              ),
+              fluidRow(
+                box(title = "Komposisi Tutupan Lahan per Kecamatan (%)", width = 12,
+                    status = "primary", solidHeader = TRUE,
+                    plotOutput("komposisi", height = "650px"))
+              )
+      )
+    )
+  )
+)
+sampel_all <- read.csv("output/sampel_indeks.csv")
+# ==============================================================
+# Server
+# ==============================================================
+server <- function(input, output, session) {
   
-  > Agar ringan di server gratis, peta klasifikasi pada dashboard online ditampilkan pada resolusi 100 m. Perhitungan statistik tetap memakai hasil analisis penuh.
+  # ---- peta tutupan lahan ----
+  output$peta_klas <- renderLeaflet({
+    m <- leaflet() %>% dasar()
+    
+    for (i in seq_along(nama_kelas)) {
+      pal_i <- colorNumeric(c(warna[i], warna[i]), domain = c(0, 2),
+                            na.color = "transparent")
+      m <- m %>% addRasterImage(r_kelas[[i]], colors = pal_i, method = "ngb",
+                                opacity = 0.9, group = nama_kelas[i],
+                                maxBytes = 4 * 1024 * 1024)
+    }
+    
+    m %>%
+      addPolygons(data = kec, fill = TRUE, fillOpacity = 0, color = "#333333",
+                  weight = 1, label = ~nama, popup = popup_kec,
+                  highlightOptions = highlightOptions(weight = 3, color = "#000000"),
+                  group = "Batas Kecamatan") %>%
+      batas_kab() %>%
+      tambah_nama() %>%
+      addLegend(position = "bottomright", colors = warna, opacity = 1,
+                labels = paste0(nama_kelas, " (", round(tot_pct, 2), "%)"),
+                title = "Kelas Tutupan Lahan") %>%
+      addLayersControl(
+        baseGroups    = dasar_nama,
+        overlayGroups = c("Batas Kabupaten", "Batas Kecamatan",
+                          "Nama Kecamatan", nama_kelas),
+        options = layersControlOptions(collapsed = FALSE))
+  })
+  
+  # ---- peta zonal indeks (rata-rata per kecamatan) ----
+  output$peta_zonal <- renderLeaflet({
+    m <- leaflet() %>% dasar()
+    
+    for (n in idx_nama) {
+      v   <- zs[[paste0(n, "_mean")]][match(kec$nama, zs$Kecamatan)]
+      pal <- colorNumeric(idx_pal[[n]], domain = v)
+      m <- m %>%
+        addPolygons(data = kec, fillColor = pal(v), fillOpacity = 0.8,
+                    color = "#FFFFFF", weight = 1, group = n,
+                    label = paste0(kec$nama, ": ", n, " = ", round(v, 3)),
+                    highlightOptions = highlightOptions(weight = 3, color = "#000000")) %>%
+        addLegend(position = "bottomright", pal = pal, values = v, opacity = 1,
+                  title = paste0(n, " (rata-rata)"), group = n)
+    }
+    
+    m %>%
+      addPolygons(data = kec, fill = FALSE, color = "#555555", weight = 1,
+                  group = "Batas Kecamatan") %>%
+      batas_kab() %>%
+      tambah_nama() %>%
+      addLayersControl(
+        baseGroups    = dasar_nama,
+        overlayGroups = c("Batas Kabupaten", "Batas Kecamatan",
+                          "Nama Kecamatan", idx_nama),
+        options = layersControlOptions(collapsed = FALSE)) %>%
+      hideGroup(idx_nama[-1])          # NDVI tampil dulu, lainnya dinyalakan manual
+  })
+  
+  # ---- tabel ----
+  output$tbl_total <- renderTable(tabel_total, striped = TRUE, digits = 2)
+  
+  output$tbl_zonal <- renderTable({
+    n <- input$indeks
+    d <- zs[, c("Kecamatan", paste0(n, c("_mean", "_min", "_max", "_median", "_sd")))]
+    names(d) <- c("Kecamatan", "Mean", "Min", "Max", "Median", "Std. Deviasi")
+    d
+  }, striped = TRUE, digits = 4)
+  
+  output$tbl_luas <- renderTable(tabel_lc, striped = TRUE, digits = 2)
+  
+  # ---- histogram nilai indeks (sampel piksel dari CSV ringan) ----
+  sampel <- reactive({
+    sampel_all$nilai[sampel_all$indeks == input$indeks]
+  })
+  
+  output$hist_idx <- renderPlot({
+    n <- input$indeks
+    hist(sampel(), breaks = 80, col = idx_warna[[n]], border = NA,
+         main = paste("Histogram", n, "Kabupaten", wil),
+         xlab = paste("Nilai", n), ylab = "Frekuensi")
+  })
+  
+  # ---- grafik batang rata-rata indeks per kecamatan ----
+  output$bar_idx <- renderPlot({
+    n   <- input$indeks
+    kol <- paste0(n, "_mean")
+    d   <- zs[order(zs[[kol]]), ]
+    par(mar = c(4, 9, 3, 1))
+    barplot(d[[kol]], names.arg = d$Kecamatan, horiz = TRUE, las = 1,
+            col = idx_warna[[n]], cex.names = 0.8,
+            xlab = paste("Rata-rata", n),
+            main = paste("Rata-rata", n, "per Kecamatan"), cex.main = 1)
+  })
+  
+  # ---- komposisi tutupan lahan per kecamatan ----
+  output$komposisi <- renderPlot({
+    d <- lc[order(lc$Vegetasi_persen), ]
+    m <- t(as.matrix(d[, kol_persen]))
+    par(mar = c(4, 9, 5, 1))
+    barplot(m, names.arg = d$Kecamatan, horiz = TRUE, las = 1, col = warna,
+            border = "white", cex.names = 0.8, xlim = c(0, 100),
+            xlab = "Persentase luas (%)")
+    mtext("Komposisi Tutupan Lahan per Kecamatan", side = 3, line = 3, font = 2)
+    legend("top", inset = c(0, -0.1), horiz = TRUE, xpd = NA, bty = "n",
+           fill = warna, legend = nama_kelas)
+  })
+}
 
----
-  
-  ## Struktur Repository
-  
-  ```
-Tutupan lahan/
-  ├── Klasifikasi tutupan lahan.R    # Script analisis: indeks, klasifikasi, zonal, tabel
-├── WebGIS.R                       # Script dashboard Shiny (sumber utama)
-├── app.R                          # Salinan WebGIS.R untuk deploy ke shinyapps.io
-├── Tutupan lahan.Rproj            # Project RStudio
-├── output/
-  │   ├── kecamatan_wonogiri.shp     # Batas kecamatan (beserta file pendamping)
-│   ├── kabupaten_wonogiri.shp     # Batas kabupaten
-│   ├── zonal_statistics_kecamatan.csv
-│   ├── luas_kelas_kecamatan.csv
-│   ├── klasifikasi_50m.tif        # Raster klasifikasi resolusi 50 m
-│   ├── indeks/                    # Raster indeks (untuk histogram dashboard)
-  │   ├── peta_layout_qgis.png
-│   └── peta_klasifikasi_layout.png
-├── README.md
-└── .gitignore
-```
-
-> Citra Sentinel-2 mentah dan raster beresolusi penuh tidak diunggah ke repository karena melebihi batas ukuran file GitHub (100 MB).
-
----
-  
-  ## Cara Menjalankan
-  
-  ### Opsi 1: Buka dashboard online
-  
-  Klik: **https://adambudi.shinyapps.io/tutupan-lahan-wonogiri/**
-  
-  ### Opsi 2: Jalankan dashboard di komputer sendiri
-  
-  1. Clone repository:
-  ```bash
-git clone https://github.com/adambudi/Tugas-Besar-ETS-Pemrograman-Spasial.git
-```
-2. Buka folder hasil clone di RStudio.
-3. Pasang paket yang dibutuhkan:
-  ```r
-install.packages(c("shiny", "shinydashboard", "leaflet", "leaflet.extras",
-                   "raster", "sf"))
-```
-4. Jalankan:
-  ```r
-shiny::runApp("WebGIS.R")
-```
-
-Pastikan folder `output/` berada di folder yang sama dengan `WebGIS.R`.
-
-### Opsi 3: Ulangi seluruh analisis
-
-1. Unduh citra Sentinel-2 L2A area Wonogiri dari Copernicus Data Space Ecosystem dan batas RBI 25K dari Ina-Geoportal.
-2. Atur path data di bagian awal `Klasifikasi tutupan lahan.R`.
-3. Jalankan script dari atas ke bawah. Hasil tersimpan di folder `output/`.
-
-### Deploy ulang ke shinyapps.io (opsional)
-
-```r
-file.copy("WebGIS.R", "app.R", overwrite = TRUE)
-files <- c("app.R", list.files("output", recursive = TRUE, full.names = TRUE))
-files <- files[!grepl("^output/band|^output/web|\\.docx$|\\.png$", files)]
-rsconnect::deployApp(appFiles = files, appName = "tutupan-lahan-wonogiri")
-```
-
----
-  
-  ## Keterbatasan
-  
-  - Klasifikasi memakai **threshold tetap** (tanpa training data), sehingga kelas yang spektralnya mirip, misalnya lahan terbuka dan bangunan, dapat tertukar.
-- Kelas **awan** dideteksi dari satu tanggal akuisisi dan bayangan awan tidak diklasifikasikan khusus.
-- Belum ada **uji akurasi** terhadap data referensi lapangan.
-- Dashboard online memakai resolusi peta klasifikasi yang diturunkan (100 m) karena batas memori paket gratis.
-
----
-  
-  ## Sumber Data dan Atribusi
-  
-  - Contains modified Copernicus Sentinel data (2026), diunduh dari Copernicus Data Space Ecosystem.
-- Batas administrasi: RBI 25K 2022, Badan Informasi Geospasial (BIG), melalui Ina-Geoportal.
-- Peta dasar dashboard: © OpenStreetMap contributors dan Esri World Imagery.
-
----
-  
-  ## Anggota Kelompok
-  
-  | Nama | Program Studi |
-  |---|---|
-  | Adam Budi Kusumo | 5016241135 |
-  | Alif Putra Dewangga | 5016241121 |
-  
-  Mata kuliah: Pemrograman Spasial A
+shinyApp(ui, server)
