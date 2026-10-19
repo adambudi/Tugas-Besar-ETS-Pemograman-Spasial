@@ -13,6 +13,18 @@ library(sf)
 wil <- "Wonogiri"          # nama wilayah (dipakai untuk judul dan nama file)
 sfx <- tolower(wil)
 
+wil <- "Wonogiri"
+sfx <- tolower(wil)
+
+kec <- st_read(sprintf("output/kecamatan_%s.shp", sfx), quiet = TRUE) |> st_transform(4326)
+kab <- st_read(sprintf("output/kabupaten_%s.shp", sfx), quiet = TRUE) |> st_transform(4326)
+
+kol_nama <- intersect(c("WADMKC", "KECAMATAN"), names(kec))[1]
+kec$nama <- trimws(as.character(kec[[kol_nama]]))
+
+pusat <- suppressWarnings(st_coordinates(st_point_on_surface(st_geometry(kec))))
+bb    <- st_bbox(kab)
+
 # ---- 1. Data vektor ----------------------------------------------------
 kec <- st_read(sprintf("output/kecamatan_%s.shp", sfx), quiet = TRUE) |> st_transform(4326)
 kab <- st_read(sprintf("output/kabupaten_%s.shp", sfx), quiet = TRUE) |> st_transform(4326)
